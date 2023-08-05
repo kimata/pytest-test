@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "pytest-test"
+version = "0.1.0"
+description = "Pytest のサンプル"
+authors = ["KIMATA Tetsuya <kiata@green-rabbit.net>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pytest-freezegun = "^0.4.2"
+pytest-cov = "^4.1.0"
+pytest-mock = "^3.11.1"
+pytest-html = "^3.2.0"
+requests = "^2.31.0"
+slack-sdk = "^3.21.3"
+schedule = "^1.2.0"
+
+[tool.poetry.dev-dependencies]
+ 
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--verbose --cov=myproject --capture=sys --cov-report=html --capture=no --html=tests/evidence/index.htm --self-contained-html"
+testpaths = [
+    "tests",
+]
+
+[tool.coverage.run]
+branch = true
+
+
+[tool.coverage.report]  
+exclude_lines = [
+  "pragma: no cover",
+  "if __name__ == .__main__.:",
+]
+
+[tool.coverage.html]
+directory = "tests/evidence/coverage"
+
+[tool.black]
+target-version = ['py39']
+line-length = 120
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

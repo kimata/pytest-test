@@ -8,27 +8,7 @@ from unittest import mock
 
 sys.path.append(str(pathlib.Path(__file__).parent.parent / "myproject"))
 
-
-# テストを実行する際に，環境変数をセットする．
-@pytest.fixture(scope="session", autouse=True)
-def env_mock():
-    with mock.patch.dict(
-        "os.environ",
-        {
-            "TEST": "true",
-        },
-    ) as fixture:
-        yield fixture
-
-
-# NOTE: 環境変数のセット
-def test_env(mocker):
-    import os
-
-    assert os.environ.get("TEST", "NONE") == "true"
-
-
-# NOTE: 返値の置き換え(固定値)
+# NOTE: 返値の置き換え - 固定値
 def test_mock_return_value_1(mocker):
     import a
 
@@ -44,7 +24,7 @@ def test_mock_return_value_1(mocker):
     assert a.a_func() == "T"
 
 
-# NOTE: 返値の置き換え(呼び出しの度に変化)
+# NOTE: 返値の置き換え - 呼び出しの度に変化
 def test_mock_return_value_2(mocker):
     import a
 
@@ -61,7 +41,7 @@ def test_mock_return_value_2(mocker):
     # もう1回追加で呼び出すとエラーになる
 
 
-# NOTE: 返値の置き換え(呼び出し回数で変化)
+# NOTE: 返値の置き換え - 呼び出し回数で変化
 def test_mock_return_value_3(mocker):
     import a
 
@@ -84,7 +64,7 @@ def test_mock_return_value_3(mocker):
     assert a.a_func() == "T0"
 
 
-# NOTE: 返値の置き換え(特定の関数から呼び出されたときのみ変化)
+# NOTE: 返値の置き換え - 特定の関数から呼び出されたときのみ変化
 def test_mock_return_value_4(mocker):
     import a
     import b
@@ -110,7 +90,7 @@ def test_mock_return_value_4(mocker):
     assert b.b_func() == "T0"
 
 
-# NOTE: 返値の置き換え(from x import y の場合)
+# NOTE: 返値の置き換え - from x import y の場合
 def test_mock_return_value_5(mocker):
     import a
     import b
@@ -134,7 +114,7 @@ def test_mock_return_value_5(mocker):
     assert b.b_func2() == "T2"
 
 
-# NOTE: 返値の置き換え (例外)
+# NOTE: 返値の置き換え - 例外
 def test_mock_return_value_6(mocker):
     import a
 
@@ -147,7 +127,7 @@ def test_mock_return_value_6(mocker):
         a.a_func()
 
 
-# NOTE: オブジェクトの置き換え (メソッド及びプロパティを置き換え)
+# NOTE: オブジェクトの置き換え - メソッド及びプロパティを置き換え
 def test_mock_object_1(mocker):
     import c
 
@@ -165,7 +145,7 @@ def test_mock_object_1(mocker):
     assert c_obj.prop == "prop T"
 
 
-# NOTE: 応用編 (open の置き換え)
+# NOTE: 応用編 - open の置き換え
 def test_mock_open_1(mocker):
     import builtins
     import string
@@ -207,7 +187,7 @@ def test_mock_open_1(mocker):
         f = open(target_file + "_")
 
 
-# NOTE: 応用編 (open の置き換え)
+# NOTE: 応用編 - open の置き換え (context manager 使用)
 def test_mock_open_2(mocker):
     import builtins
     import string
@@ -245,7 +225,7 @@ def test_mock_open_2(mocker):
         assert f.read() == "T"
 
 
-# NOTE: 応用編 (requests.get の置き換え)
+# NOTE: 応用編 - requests.get の置き換え
 def test_mock_request(mocker):
     import requests
 
@@ -262,7 +242,7 @@ def test_mock_request(mocker):
     assert requests.get("DUMMY").json() == {"T": True}
 
 
-# NOTE: 応用編 (Slack 通知の置き換え)
+# NOTE: 応用編 - Slack 通知の置き換え
 @pytest.fixture(scope="session", autouse=True)
 def slack_mock():
     with mock.patch(
@@ -279,6 +259,101 @@ def test_mock_slack(mocker):
     client.chat_postMessage(channel="DUMMY", text="DUMMY")
 
 
-# NOTE: 時間の操作
-def test_create_sensor_graph_1(freezer):
+scheduler_terminate = False
+
+
+def schedule_worker():
     import schedule
+    import time
+
+    global scheduler_terminate
+    while True:
+        if scheduler_terminate:
+            break
+        schedule.run_pending()
+        time.sleep(1)
+
+
+# NOTE: 時間の操作
+def test_schedule_1(freezer):
+    import schedule
+    import datetime
+    import time
+    import threading
+
+    global scheduler_terminate
+
+    scheduler_terminate = False
+    thread = threading.Thread(target=schedule_worker)
+    thread.start()
+
+    job_hist = []
+
+    def job():
+        job_hist.append(".")
+
+    schedule.clear()
+    freezer.move_to(datetime.datetime.now().replace(hour=12, minute=0, second=0))
+    schedule.every().day.at("12:01").do(job)
+    assert schedule.idle_seconds() <= 60
+    freezer.move_to(datetime.datetime.now().replace(hour=12, minute=1, second=0))
+
+    time.sleep(1)
+
+    assert job_hist == ["."]
+
+    scheduler_terminate = True
+    thread.join()
+
+
+# NOTE: 時間の操作
+def test_schedule_2(freezer):
+    import schedule
+    import datetime
+    import time
+    import threading
+    import pytz
+
+    global scheduler_terminate
+
+    scheduler_terminate = False
+    thread = threading.Thread(target=schedule_worker)
+    thread.start()
+
+    job_hist = []
+
+    def job():
+        job_hist.append(".")
+
+    schedule.clear()
+    tz = datetime.timezone(datetime.timedelta(hours=+9), "JST")
+    freezer.move_to(datetime.datetime.now(tz).replace(hour=12, minute=0, second=0))
+    schedule.every().day.at("03:01", pytz.timezone("Asia/Tokyo")).do(job)
+    assert schedule.idle_seconds() <= 60
+    freezer.move_to(datetime.datetime.now(tz).replace(hour=12, minute=1, second=0))
+
+    time.sleep(1)
+
+    assert job_hist == ["."]
+
+    scheduler_terminate = True
+    thread.join()
+
+
+# テストを実行する際に，環境変数をセットする．
+@pytest.fixture(scope="session", autouse=True)
+def env_mock():
+    with mock.patch.dict(
+        "os.environ",
+        {
+            "TEST": "true",
+        },
+    ) as fixture:
+        yield fixture
+
+
+# NOTE: 環境変数のセット
+def test_env(mocker):
+    import os
+
+    assert os.environ.get("TEST", "NONE") == "true"

@@ -13,12 +13,13 @@ pytest-html = "^3.2.0"
 requests = "^2.31.0"
 slack-sdk = "^3.21.3"
 schedule = "^1.2.0"
+pytz = "^2023.3"
 
 [tool.poetry.dev-dependencies]
  
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--verbose --cov=myproject --capture=sys --cov-report=html --capture=no --html=tests/evidence/index.htm --self-contained-html"
+addopts = "--verbose --cov=myproject --capture=sys --cov-report=html --html=tests/evidence/index.htm --self-contained-html"
 testpaths = [
     "tests",
 ]

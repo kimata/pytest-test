@@ -271,7 +271,7 @@ def schedule_worker():
         if scheduler_terminate:
             break
         schedule.run_pending()
-        time.sleep(1)
+        time.sleep(0.1)
 
 
 # NOTE: 時間の操作
@@ -298,7 +298,7 @@ def test_schedule_1(freezer):
     assert schedule.idle_seconds() <= 60
     freezer.move_to(datetime.datetime.now().replace(hour=12, minute=1, second=0))
 
-    time.sleep(1)
+    time.sleep(0.2)
 
     assert job_hist == ["."]
 
@@ -332,7 +332,41 @@ def test_schedule_2(freezer):
     assert schedule.idle_seconds() <= 60
     freezer.move_to(datetime.datetime.now(tz).replace(hour=12, minute=1, second=0))
 
-    time.sleep(1)
+    time.sleep(0.2)
+
+    assert job_hist == ["."]
+
+    scheduler_terminate = True
+    thread.join()
+
+
+# NOTE: 時間の操作
+def test_schedule_3():
+    import schedule
+    import datetime
+    import time
+    import threading
+    import pytz
+
+    global scheduler_terminate
+
+    scheduler_terminate = False
+    thread = threading.Thread(target=schedule_worker)
+    thread.start()
+
+    job_hist = []
+
+    def job():
+        job_hist.append(".")
+
+    schedule.clear()
+    tz = datetime.timezone(datetime.timedelta(hours=+9), "JST")
+    time_str = ((datetime.datetime.now(tz) + datetime.timedelta(minutes=+1))).strftime("%H:%M")
+
+    schedule.every().day.at(time_str, pytz.timezone("Asia/Tokyo")).do(job)
+    assert schedule.idle_seconds() <= 60
+
+    time.sleep(60)
 
     assert job_hist == ["."]
 
